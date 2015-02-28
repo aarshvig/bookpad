@@ -3,11 +3,19 @@ import random
 import signal
 import time
 
-
 #Timer handler, helper function
 winners = ['-','-','-' , '-','-','-' ,'-','-','-']
 depth = 0
 infinite = 99999999
+
+###update all these values for better heuristic function
+digonal_reward = 0
+row_reward = 0
+column_reward = 0
+local_win_reward = 0
+whole_board_win_reward = 0
+
+
 
 def check_winners(i):
 	if(winners[i]=='x'):
@@ -24,6 +32,63 @@ def checkBlock(block , i , j , flag):
 		return 1	
 	return 0	
 
+def getNextBlocks(temp_board , temp_block , prev_move ,flag):					
+		for_corner = [0,2,3,5,6,8]
+
+		#List of permitted blocks, based on old move.
+		blocks_allowed  = []
+
+		if prev_move[0] in for_corner and prev_move[1] in for_corner:
+			## we will have 3 representative blocks, to choose from
+
+			if prev_move[0] % 3 == 0 and prev_move[1] % 3 == 0:
+				## top left 3 blocks are allowed
+				blocks_allowed = [0, 1, 3]
+			elif prev_move[0] % 3 == 0 and prev_move[1] in [2, 5, 8]:
+				## top right 3 blocks are allowed
+				blocks_allowed = [1,2,5]
+			elif prev_move[0] in [2,5, 8] and prev_move[1] % 3 == 0:
+				## bottom left 3 blocks are allowed
+				blocks_allowed  = [3,6,7]
+			elif prev_move[0] in [2,5,8] and prev_move[1] in [2,5,8]:
+				### bottom right 3 blocks are allowed
+				blocks_allowed = [5,7,8]
+			else:
+				print "SOMETHING REALLY WEIRD HAPPENED!"
+				sys.exit(1)
+		else:
+		#### we will have only 1 block to choose from (or maybe NONE of them, which calls for a free move)
+			if prev_move[0] % 3 == 0 and prev_move[1] in [1,4,7]:
+				## upper-center block
+				blocks_allowed = [1]
+	
+			elif prev_move[0] in [1,4,7] and prev_move[1] % 3 == 0:
+				## middle-left block
+				blocks_allowed = [3]
+		
+			elif prev_move[0] in [2,5,8] and prev_move[1] in [1,4,7]:
+				## lower-center block
+				blocks_allowed = [7]
+
+			elif prev_move[0] in [1,4,7] and prev_move[1] in [2,5,8]:
+				## middle-right block
+				blocks_allowed = [5]
+			elif prev_move[0] in [1,4,7] and prev_move[1] in [1,4,7]:
+				blocks_allowed = [4]
+
+		for i in reversed(blocks_allowed):
+			if temp_block[i] != '-':
+				blocks_allowed.remove(i)
+
+		print temp_block
+		if(blocks_allowed == []):
+			for i in range(9):
+				if(temp_block[i]=='-'):
+					blocks_allowed.append(i)
+		return blocks_allowed			
+
+
+
 
 def winningProbability(block , i , j , flag):
 	print "winning probability"
@@ -37,76 +102,80 @@ def winningProbability(block , i , j , flag):
 	if(checkBlock(block , i , j , flag)==0):
 		return total
 	if(i==0 and j==0):
-		if(checkBlock(block , 1 ,1 , flag)==1 and checkBlock(block , 2 , 2 , flag)==1):
+		if(checkBlock(block , 1 ,1 , flag)!=0 and checkBlock(block , 2 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 1 , 1, flag) + checkBlock(block , 2 , 2, flag) + 1 #diagonal
-		if(checkBlock(block , 0 ,1 , flag)==1 and checkBlock(block , 0 , 2 , flag)==1):
+		if(checkBlock(block , 0 ,1 , flag)!=0 and checkBlock(block , 0 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 0 , 1, flag) + checkBlock(block , 0 , 2 , flag)
-		if(checkBlock(block , 1 ,0 , flag)==1 and checkBlock(block , 2 , 0 , flag)==1):
+		if(checkBlock(block , 1 ,0 , flag)!=0 and checkBlock(block , 2 , 0 , flag)!=0):
 			total = total  + checkBlock(block , 1 , 0, flag) + checkBlock(block , 2 , 0, flag)		
 		return total	
-	if(i==0 and j==1):
-		if(checkBlock(block , 1 ,1 , flag)==1 and checkBlock(block , 2 , 1 , flag)==1):
+	if(i==0 and j!=0):
+		if(checkBlock(block , 1 ,1 , flag)!=0 and checkBlock(block , 2 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 1, 1, flag) + checkBlock(block , 2 , 1 , flag)
-		if(checkBlock(block , 0 ,0 , flag)==1 and checkBlock(block , 0 , 2 , flag)==1):
+		if(checkBlock(block , 0 ,0 , flag)!=0 and checkBlock(block , 0 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 0 , 0 , flag) + checkBlock(block , 0 , 2 , flag)	
 		return total
 	if(i==0 and j==2):
-		if(checkBlock(block , 0 ,0 , flag)==1 and checkBlock(block , 0 , 1 , flag)==1):
+		if(checkBlock(block , 0 ,0 , flag)!=0 and checkBlock(block , 0 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 0 , 0, flag) + checkBlock(block , 0, 1, flag)
-		if(checkBlock(block , 1 ,2 , flag)==1 and checkBlock(block , 2 , 2 , flag)==1):
+		if(checkBlock(block , 1 ,2 , flag)!=0 and checkBlock(block , 2 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 1, 2, flag) + checkBlock(block , 2, 2, flag)	
-		if(checkBlock(block , 2 ,0 , flag)==1 and checkBlock(block , 1 , 1 , flag)==1):
+		if(checkBlock(block , 2 ,0 , flag)!=0 and checkBlock(block , 1 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 2, 0, flag) + checkBlock(block , 1 ,1, flag) + 1 #diagonal	
 		return total
-	if(i==1 and j==0):
-		if(checkBlock(block , 0 ,0 , flag)==1 and checkBlock(block , 2 , 0 , flag)==1):
+	if(i!=0 and j==0):
+		if(checkBlock(block , 0 ,0 , flag)!=0 and checkBlock(block , 2 , 0 , flag)!=0):
 			total = total  + checkBlock(block , 0, 0, flag) + checkBlock(block , 2, 0, flag)
-		if(checkBlock(block , 1 ,1 , flag)==1 and checkBlock(block , 1 , 2 , flag)==1):
+		if(checkBlock(block , 1 ,1 , flag)!=0 and checkBlock(block , 1 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 1, 1, flag) + checkBlock(block , 1, 2, flag)	
 		return total
-	if(i==1 and j==1):
-		if(checkBlock(block , 0 ,0 , flag)==1 and checkBlock(block , 2 , 2 , flag)==1):
+	if(i!=0 and j!=0):
+		if(checkBlock(block , 0 ,0 , flag)!=0 and checkBlock(block , 2 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 0, 0, flag) + checkBlock(block , 2, 2, flag) + 1 #diagonal	
-		if(checkBlock(block , 0 ,1 , flag)==1 and checkBlock(block , 2 , 1 , flag)==1):
+		if(checkBlock(block , 0 ,1 , flag)!=0 and checkBlock(block , 2 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 0, 1, flag) + checkBlock(block , 2, 1, flag)	
-		if(checkBlock(block , 0 ,2 , flag)==1 and checkBlock(block , 2 , 0 , flag)==1):
+		if(checkBlock(block , 0 ,2 , flag)!=0 and checkBlock(block , 2 , 0 , flag)!=0):
 			total = total  + checkBlock(block , 0, 2, flag) + checkBlock(block , 2, 0, flag) + 1 #diagonal	
-		if(checkBlock(block , 1 ,0 , flag)==1 and checkBlock(block , 1 , 2 , flag)==1):
+		if(checkBlock(block , 1 ,0 , flag)!=0 and checkBlock(block , 1 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 1, 0, flag) + checkBlock(block , 1, 2, flag)		
 		return total
-	if(i==1 and j==2):
-		if(checkBlock(block , 0 ,2 , flag)==1 and checkBlock(block , 2 , 2 , flag)==1):
+	if(i!=0 and j==2):
+		if(checkBlock(block , 0 ,2 , flag)!=0 and checkBlock(block , 2 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 0, 2, flag) + checkBlock(block , 2, 2, flag)
-		if(checkBlock(block , 1 ,0 , flag)==1 and checkBlock(block , 1 , 1 , flag)==1):
+		if(checkBlock(block , 1 ,0 , flag)!=0 and checkBlock(block , 1 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 1, 0, flag) + checkBlock(block , 1, 1, flag)
 		return total		
 	if(i==2 and j==0):
-		if(checkBlock(block , 0 ,0 , flag)==1 and checkBlock(block , 1 , 0 , flag)==1):
+		if(checkBlock(block , 0 ,0 , flag)!=0 and checkBlock(block , 1 , 0 , flag)!=0):
 			total = total  + checkBlock(block , 0, 0, flag) + checkBlock(block , 1, 0, flag)
-		if(checkBlock(block , 2 ,1 , flag)==1 and checkBlock(block , 2 , 2 , flag)==1):
+		if(checkBlock(block , 2 ,1 , flag)!=0 and checkBlock(block , 2 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 2, 1, flag) + checkBlock(block , 2, 2, flag)
-		if(checkBlock(block , 1 ,1 , flag)==1 and checkBlock(block , 0 , 2 , flag)==1):
+		if(checkBlock(block , 1 ,1 , flag)!=0 and checkBlock(block , 0 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 1, 1, flag) + checkBlock(block , 0, 2, flag) + 1 #diagonal	
 		return total
 
-	if(i==2 and j==1):
-		if(checkBlock(block , 0 ,1 , flag)==1 and checkBlock(block , 1 , 1 , flag)==1):
+	if(i==2 and j!=0):
+		if(checkBlock(block , 0 ,1 , flag)!=0 and checkBlock(block , 1 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 0, 1, flag) + checkBlock(block , 1, 1, flag)
-		if(checkBlock(block , 2 ,0 , flag)==1 and checkBlock(block , 2 , 2 , flag)==1):
+		if(checkBlock(block , 2 ,0 , flag)!=0 and checkBlock(block , 2 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 2, 0, flag) + checkBlock(block , 2, 2, flag)
 		return total			
 	if(i==2 and j==2):	
-		if(checkBlock(block , 0 ,2 , flag)==1 and checkBlock(block , 1 , 2 , flag)==1):
+		if(checkBlock(block , 0 ,2 , flag)!=0 and checkBlock(block , 1 , 2 , flag)!=0):
 			total = total  + checkBlock(block , 0, 2, flag) + checkBlock(block , 1, 2, flag)
-		if(checkBlock(block , 2 ,0 , flag)==1 and checkBlock(block , 2 , 1 , flag)==1):
+		if(checkBlock(block , 2 ,0 , flag)!=0 and checkBlock(block , 2 , 1 , flag)!=0):
 			total = total  + checkBlock(block , 2, 0, flag) + checkBlock(block , 2, 1, flag)
-		if(checkBlock(block , 1 ,1 , flag)==1 and checkBlock(block , 0 , 0 , flag)==1):
+		if(checkBlock(block , 1 ,1 , flag)!=0 and checkBlock(block , 0 , 0 , flag)!=0):
 			total = total  + checkBlock(block , 1, 1, flag) + checkBlock(block , 0, 0, flag) + 1 #diagonal			
     	return total
     #print total
     #time.sleep(2)
 	
 
+
+####add a funtion to check if winning a particular block makes the 'x'
+####to win the whole board 
+####If yes give it a high utility
 
 def heuristic(temp_board , temp_block , blocks_allowed):
 	print "WINNERS"
@@ -163,9 +232,9 @@ def heuristic(temp_board , temp_block , blocks_allowed):
 				if(check_winners(1)!=  0 and check_winners(7)!=  0)	:
 					total = total  + check_winners(1) + check_winners(7)
 				if(check_winners(0)!=  0 and check_winners(8)!=  0):
-					total = total  + check_winners(0) + check_winners(8) + 1
+					total = total  + check_winners(0) + check_winners(8) + 1 #diagonal
 				if(check_winners(2)!=  0 and check_winners(6)!=  0):
-					total = total  + check_winners(2) + check_winners(6) + 1
+					total = total  + check_winners(2) + check_winners(6) + 1 #diagonal
 				if(check_winners(3)!=  0 and check_winners(5)!=  0):
 					total += total  + check_winners(3) + check_winners(5)
 
@@ -181,7 +250,7 @@ def heuristic(temp_board , temp_block , blocks_allowed):
 				if(check_winners(7)!=  0 and check_winners(8)!=  0):
 					total = total  + check_winners(7) + check_winners(8)
 				if(check_winners(4)!=  0 and check_winners(2)!=  0):	
-					total = total  + check_winners(4) + check_winners(2) + 1
+					total = total  + check_winners(4) + check_winners(2) + 1 #diagonal
 			if(i==7):
 				if(check_winners(4)!=  0 and check_winners(1)!=  0):
 					total = total  + check_winners(4) + check_winners(1)
@@ -190,7 +259,7 @@ def heuristic(temp_board , temp_block , blocks_allowed):
 
 			if(i==8):
 				if(check_winners(4)!=  0 and check_winners(0)!=  0):
-					total = total  + check_winners(4) + check_winners(0) + 1
+					total = total  + check_winners(4) + check_winners(0) + 1 #diagonal
 				if(check_winners(2)!=  0 and check_winners(5)!=  0):
 					total = total  + check_winners(2) + check_winners(5)
 				if(check_winners(6)!=  0 and check_winners(7)!=  0):
@@ -218,31 +287,70 @@ def heuristic(temp_board , temp_block , blocks_allowed):
 			block[(i%3)][(j%3)] = temp_board[i][j]
 	max_utility = -1 * infinite		
 	move_selected=[]
-
+	q_block = [['-','-','-'],['-','-','-'],['-','-','-']]
+	q_r_start = 0
+	q_c_start = 0
 	for i in range(3):
 		for j in range(3):		
 			if(block[i][j] == '-'):
 				block[i][j]='x'
+				#need not update the whoel board as u are concerned only for changes in that block
+				temp_board[r_start+i][c_start+j]='x'
 				p = winningProbability(block , i , j , 'x')
-				print p
-				q = winningProbability(block , i , j , 'o')
-				print q
-				block[i][j]='-'
-				if((p-q) > max_utility):
-					move_selected = []
-					max_utility = (p-q)
-					move_selected.append(r_start+i)
-					move_selected.append(c_start+j)
-	move_selected = tuple(move_selected)
-	return move_selected
 
+				print p
+				print "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+				print (i , j)				
+				#what happens if x wins the blocks ?? to be used or not
+
+				nextBlocks = getNextBlocks(temp_board,temp_block,(i,j) ,'o')
+				print "NEXT BLOCKS FOR O ARE"
+				for k in nextBlocks:
+					print k,
+					q_r_start = (k / 3) * 3
+					q_c_start = (k % 3) * 3 
+					print "q_r_start ,   q_c_start"
+					print q_r_start
+					print q_c_start
+					
+					for r in range(q_r_start , q_r_start+3):
+						for s in range(q_c_start , q_c_start+3):
+							q_block[(r%3)][(s%3)] = temp_board[r][s]
+					print q_block		
+
+					for r in range(3):		
+						for s in range(3):
+							print "r , s"
+							print r
+							print s
+							q = winningProbability(q_block , r , s , 'o')
+							print q
+					
+							if((p-q) > max_utility):
+								move_selected = []
+								max_utility = (p-q)
+								move_selected.append(r_start+i)
+								move_selected.append(c_start+j)		
+				print "----------------------------------------------------"
+				
+
+
+			#	q = winningProbability(block , i , j , 'o')
+				#
+				temp_board[r_start+i][c_start+j]='-'
+			#	print q
+				block[i][j]='-'
+			#	if((p-q) > max_utility):
+			#		move_selected = []
+			#		max_utility = (p-q)
+			#		move_selected.append(r_start+i)
+			#		move_selected.append(c_start+j)
+	move_selected = tuple(move_selected)
+	#return move_selected
+	#return max_utility
+	return (max_utility , move_selected)
 
 	
-
-
-
-
-
 
 class TimedOutExc(Exception):
         pass
@@ -268,11 +376,23 @@ class Player1:
 		pass
 
 	def move(self,temp_board,temp_block,old_move,flag):
+		(utility , move_selected) = self.call(temp_board,temp_block,old_move , flag)
+		print "hi i'm in new move function"
+		print utility
+		print move_selected		
+		
+		#return (1,1)
+		return move_selected
+
+	def call(self,temp_board,temp_block,old_move ,flag):
 #		while(1):
 #			pass		
 		global depth
 		cell_selected = (1,1)
-		utility = 0
+		utility = infinite
+		if(flag == 'x'):
+			utility = -1 * infinite
+
 		max_utility = -1*infinite
 		min_utility = infinite
 		print_lists(temp_board , temp_block)
@@ -336,55 +456,84 @@ class Player1:
 		for i in blocks_allowed:
 			print i
 
-		if(depth == 0):
-#			for i in range(3):
-#				for j in range(3):
-#					winners[] = temp_block[i][j]
+		if(depth == 2):
+
 			t =  heuristic(temp_board , temp_block , blocks_allowed)
-			print "heuristic"
-			print t
+			#print "heuristic"
+			#print t
 			return t
 			
 			
-		time.sleep(1)
+	#	time.sleep(1)
 
 		cells = get_empty_out_of(temp_board, blocks_allowed,temp_block)
 
+
 		if(flag == 'x'):
+			
+
 			for i in cells:
 				#update_lists(temp_board , temp_block , i , 'x')				
+				
 				temp_board[i[0]][i[1]] = 'x'
 				depth += 1
-				self.move(temp_board , temp_block, i , 'o')
+				(utility , move_selected) = self.call(temp_board , temp_block, i  ,'o')
+				
+				depth -= 1
+				temp_board[i[0]][i[1]] = '-'
+
+
 				if(utility > max_utility):
 					max_utility = utility
 					cell_selected = i
-				depth -= 1
-				temp_board[i[0]][i[1]] = '-'
+				
+				#if(utility > alpha):
+				#	alpha = utility
+
+				#if(beta <= alpha):
+				#	break
+				
+				
 				#update_lists(temp_board , temp_block , i , '-')
 
 		
+		
+
 		if(flag == 'o'):	
 			for i in cells:
 				#update_lists(temp_board , temp_block , i , 'o')				
+				
 				temp_board[i[0]][i[1]] = 'o'
 				depth += 1
-				self.move(temp_board , temp_block, i , 'x')
+				(utility , move_selected) = self.call(temp_board , temp_block, i , 'x')
+				
+				depth -= 1  
+				temp_board[i[0]][i[1]] = '-'
+
 				if(utility < min_utility):
 					min_utility = utility
-				depth -= 1
-				temp_board[i[0]][i[1]] = '-'
+					cell_selected = i
+				
+				
+				
+
+				#if(beta < utility):
+				#	beta = utility
+
+				#if(beta <= alpha):
+				#	break
+					
+
+
 				#update_lists(temp_board , temp_block , i , '-')
 
 		
-		return cell_selected				
-		return cells[random.randrange(len(cells))]
-
-
-
-
-
-
+		#return cell_selected				
+		#return cells[random.randrange(len(cells))]
+		if(flag == 'x'):
+			return (max_utility , cell_selected)
+		if(flag == 'o'):
+			return (min_utility , cell_selected)	
 
 
 class Player2:
@@ -844,8 +993,10 @@ if __name__ == '__main__':
         
         # Deciding player1 / player2 after a coin toss
         # However, in the tournament, each player will get a chance to go 1st. 
-    #    num = random.uniform(0,1)
-    #    if num > 0.5:
-	#	simulate(obj2, obj1)
-	#else:
+        #num = random.uniform(0,1)
+        #if num > 0.5:
+	#simulate(obj2, obj1)
 	simulate(obj1, obj2)
+	#else:
+	#	simulate(obj1, obj2)
+
