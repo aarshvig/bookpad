@@ -1,5 +1,5 @@
 # bookpad
-#IIITHyderabad #CloudComputing #CSE565 #Monsoon16 #SIEL #docspad #bookpad
+#IIITHyderabad #CloudComputing #CSE565 #Monsoon15 #SIEL #docspad #bookpad
 initial.py is to create the database tables of sqlite
 start.py starts the Flask server
 apis format:
